@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Owner Panel — SoundShare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/web/styles.css" />
+</head>
+<body class="panel-page">
+  <div class="bg-glow"></div>
+
+  <main class="container panel-container">
+    <!-- Login -->
+    <section id="loginSection" class="card panel-login hidden">
+      <h1 class="panel-title">Owner Panel</h1>
+      <p class="panel-subtitle">Enter your owner token to manage listeners and security.</p>
+      <p class="panel-hint">Find the token in the SoundShare console window when the server starts.</p>
+      <label class="field-label" for="ownerTokenInput">Owner token</label>
+      <input id="ownerTokenInput" class="text-input" type="password" autocomplete="off" placeholder="Paste owner token" />
+      <button id="loginBtn" class="connect-btn" type="button">Unlock panel</button>
+      <p id="loginError" class="form-error hidden"></p>
+    </section>
+
+    <!-- Dashboard -->
+    <div id="dashboardSection" class="hidden">
+      <header class="header panel-header">
+        <div class="brand">
+          <div class="brand-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3v18M8 8l4-4 4 4M8 16l4 4 4-4"/>
+              <circle cx="12" cy="12" r="9"/>
+            </svg>
+          </div>
+          <div>
+            <h1 class="logo">Owner Panel</h1>
+            <p class="tagline">Manage listeners &amp; security</p>
+          </div>
+        </div>
+        <a class="about-link" href="/">Listener</a>
+      </header>
+
+      <div class="panel-stats">
+        <div class="stat-card">
+          <span class="stat-value" id="statListeners">0</span>
+          <span class="stat-label">Live listeners</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statDevices">0</span>
+          <span class="stat-label">Connected devices</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statBlocked">0</span>
+          <span class="stat-label">Blocked</span>
+        </div>
+      </div>
+
+      <section class="card panel-section">
+        <h2>Security</h2>
+        <div class="security-row">
+          <label class="toggle-label">
+            <input id="passwordToggle" type="checkbox" />
+            <span>Require password to listen</span>
+          </label>
+        </div>
+        <div id="passwordFields" class="password-fields hidden">
+          <label class="field-label" for="listenerPassword">Listener password</label>
+          <input id="listenerPassword" class="text-input" type="text" placeholder="Enter password for listeners" />
+        </div>
+        <button id="saveSecurityBtn" class="secondary-btn" type="button">Save security settings</button>
+        <p id="securityMsg" class="form-success hidden"></p>
+      </section>
+
+      <section class="card panel-section">
+        <div class="section-head">
+          <h2>Connected devices</h2>
+          <button id="refreshBtn" class="icon-btn" type="button" title="Refresh">&#8635;</button>
+        </div>
+        <div id="deviceList" class="device-list">
+          <p class="empty-state">No devices connected</p>
+        </div>
+      </section>
+
+      <section class="card panel-section">
+        <h2>Blocked devices</h2>
+        <div id="blockedList" class="device-list">
+          <p class="empty-state">No blocked devices</p>
+        </div>
+      </section>
+
+      <section class="card panel-section">
+        <h2>Owner token</h2>
+        <p class="panel-hint">Keep this secret. Required to access this panel from other devices.</p>
+        <div class="token-row">
+          <code id="ownerTokenDisplay" class="token-display">—</code>
+          <button id="copyTokenBtn" class="secondary-btn" type="button">Copy</button>
+        </div>
+        <button id="regenTokenBtn" class="danger-btn" type="button">Regenerate token</button>
+      </section>
+
+      <footer class="footer">
+        <span>SoundShare</span>
+        <span class="dot">·</span>
+        <span>by H M Shahadul Islam</span>
+      </footer>
+    </div>
+  </main>
+
+  <script src="/web/panel.js"></script>
+</body>
+</html>

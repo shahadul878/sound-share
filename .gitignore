@@ -2,10 +2,13 @@
 dist/
 build/pyi-work/
 
-# VB-Audio vendor binaries (downloaded at build time)
+# VB-Audio vendor binaries (downloaded or copied at build time)
 vendor/*
 !vendor/README.txt
 !vendor/readme.txt
+
+# Local config (password, tokens)
+soundshare_config.json
 
 # Python
 __pycache__/

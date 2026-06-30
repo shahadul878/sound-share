@@ -2,7 +2,7 @@
 ; Developer: H M Shahadul Islam
 
 #define MyAppName "SoundShare"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.1.0"
 #define MyAppPublisher "H M Shahadul Islam"
 #define MyAppURL "https://github.com/"
 #define MyAppExeName "SoundShare.exe"
@@ -41,8 +41,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "firewall"; Description: "Allow SoundShare through Windows Firewall (port 8765)"; GroupDescription: "Network:"; Flags: checkedonce
 
 [Files]
-; VB-Audio Virtual Cable (bundled)
-Source: "..\vendor\VBCABLE_Setup_x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: VbcableNeeded
+; VB-Audio Virtual Cable - full driver pack (setup needs all files in same folder)
+Source: "..\vendor\VBCABLE_Driver_Pack45\*"; DestDir: "{tmp}\vbcable"; Flags: deleteafterinstall recursesubdirs; Check: VbcableNeeded
 ; SoundShare application
 Source: "..\dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\installer\ABOUT.txt"; DestDir: "{app}"; Flags: ignoreversion
@@ -55,7 +55,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 ; Silent install VB-Audio Virtual Cable
-Filename: "{tmp}\VBCABLE_Setup_x64.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"; StatusMsg: "Installing virtual audio driver..."; Flags: waituntilterminated; Check: VbcableNeeded
+Filename: "{tmp}\vbcable\VBCABLE_Setup_x64.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"; StatusMsg: "Installing virtual audio driver..."; Flags: waituntilterminated; Check: VbcableNeeded
 ; Windows Firewall rule
 Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""SoundShare"" dir=in action=allow protocol=TCP localport=8765"; Flags: runhidden; Tasks: firewall; StatusMsg: "Configuring firewall..."
 ; Launch after install

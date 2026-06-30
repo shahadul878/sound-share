@@ -8,13 +8,13 @@ Developed by **H M Shahadul Islam**
 
 ## For end users (Windows installer)
 
-1. Run **`SoundShare-Setup-1.0.0.exe`** (from `dist/` after building, or from release)
-2. Complete the installer — VB-Audio Virtual Cable is included automatically
+1. Run **`SoundShare-Setup-1.1.0.exe`** — one file, everything included
+2. Complete the wizard — VB-Audio Virtual Cable (full driver pack) installs automatically
 3. Launch **SoundShare** from Desktop
 4. Share the **Network** URL with phones on your Wi-Fi
 5. Listeners tap **Connect & Play**
 
-No Python, no extra plugins, no manual sound configuration.
+No Python, no extra downloads, no manual sound configuration.
 
 ---
 
@@ -42,8 +42,14 @@ cd soundshare
 ```
 
 Produces:
-- `dist/SoundShare.exe` — portable
-- `dist/SoundShare-Setup-1.0.0.exe` — full installer with VB-Cable
+- `dist/SoundShare-Setup-1.1.0.exe` — **single-file installer** (SoundShare + full VB-Cable driver pack)
+- `dist/SoundShare.exe` — portable app only
+
+To use your own VB-Cable driver pack folder:
+
+```powershell
+.\build\build.ps1 -VbCablePath "C:\Users\...\Downloads\VBCABLE_Driver_Pack45"
+```
 
 **Requirements:** Python 3.10+, Inno Setup 6
 
@@ -75,7 +81,19 @@ Open `/about` in the listener UI for more details.
 ```bash
 py launcher.py --port 8765
 py launcher.py --loopback    # use physical speakers instead of virtual cable
+py launcher.py --password mysecret   # require listener password
+py launcher.py --no-password         # disable password protection
 ```
+
+### Owner panel
+
+Open **`http://127.0.0.1:8765/panel`** on the host PC (opens automatically on launch).
+
+- View all connected devices in real time
+- **Remove** — disconnect a listener
+- **Block** — disconnect and prevent that device from reconnecting
+- **Password** — enable/disable listener password protection
+- Owner token is printed in the console at startup (required to access panel from other devices)
 
 ---
 

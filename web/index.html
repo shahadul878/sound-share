@@ -27,9 +27,23 @@
         </div>
       </div>
       <a class="about-link" href="/about">About</a>
+      <a class="about-link panel-link" href="/panel">Panel</a>
     </header>
 
     <section class="card">
+      <div id="authGate" class="auth-gate hidden">
+        <p class="auth-title">Password required</p>
+        <p class="auth-hint">Enter the password from the SoundShare host to listen.</p>
+        <label class="field-label" for="listenerPasswordInput">Password</label>
+        <input id="listenerPasswordInput" class="text-input" type="password" placeholder="Listener password" />
+        <button id="authBtn" class="connect-btn" type="button">Unlock &amp; connect</button>
+        <p id="authError" class="form-error hidden"></p>
+      </div>
+
+      <div id="listenerMain">
+      <label class="field-label device-name-label" for="deviceName">Your device name</label>
+      <input id="deviceName" class="text-input device-name-input" type="text" placeholder="e.g. iPhone, Living room tablet" maxlength="48" />
+
       <div id="statusBadge" class="status-badge idle">Ready</div>
 
       <button id="connectBtn" class="connect-btn" type="button">
@@ -60,6 +74,7 @@
       <div class="meta">
         <span id="listenerCount">Listeners: —</span>
         <span id="connectionState">Not connected</span>
+      </div>
       </div>
     </section>
 

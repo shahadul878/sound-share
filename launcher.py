@@ -13,7 +13,7 @@ import webbrowser
 
 def _open_browser_later(port: int) -> None:
     time.sleep(1.5)
-    webbrowser.open(f"http://127.0.0.1:{port}")
+    webbrowser.open(f"http://127.0.0.1:{port}/panel")
 
 
 def main() -> None:

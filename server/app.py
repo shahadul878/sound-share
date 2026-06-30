@@ -7,8 +7,9 @@ import asyncio
 import json
 import logging
 import os
+import secrets
 import socket
-from pathlib import Path
+import time
 
 import qrcode
 from aiohttp import web
@@ -22,16 +23,30 @@ from server.audio import (
     probe_audio_devices,
     shutdown_audio,
 )
-from server.virtual_speaker import setup_virtual_speaker, teardown_virtual_speaker
-
+from server.auth import (
+    create_listener_session,
+    purge_expired_sessions,
+    validate_listener_session,
+    verify_listener_password,
+)
+from server.config import (
+    block_client,
+    get_listener_password,
+    get_owner_token,
+    is_blocked,
+    load_config,
+    password_required,
+    save_config,
+    unblock_client,
+)
 from server.paths import get_web_dir
+from server.peers import peer_registry
+from server.virtual_speaker import setup_virtual_speaker, teardown_virtual_speaker
 
 logger = logging.getLogger(__name__)
 
 WEB_DIR = get_web_dir()
 DEFAULT_PORT = 8765
-
-pcs: set[RTCPeerConnection] = set()
 
 
 def get_lan_ip() -> str:
@@ -55,20 +70,47 @@ def load_ice_servers() -> list[RTCIceServer]:
     return [RTCIceServer(urls="stun:stun.l.google.com:19302")]
 
 
+def _client_ip(request: web.Request) -> str:
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    peername = request.transport.get_extra_info("peername") if request.transport else None
+    if peername:
+        return peername[0]
+    return "unknown"
+
+
+def _require_owner(request: web.Request) -> web.Response | None:
+    token = request.headers.get("X-Owner-Token") or request.query.get("token", "")
+    if not token or not secrets.compare_digest(token, get_owner_token()):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    return None
+
+
 def print_startup_banner(host: str, port: int, capture_mode: str) -> None:
     lan_ip = get_lan_ip()
     local_url = f"http://127.0.0.1:{port}"
     lan_url = f"http://{lan_ip}:{port}"
+    panel_url = f"{local_url}/panel"
 
     print()
     print("=" * 52)
-    print("  SoundShare v1.0 — by H M Shahadul Islam")
+    print("  SoundShare v1.1 — by H M Shahadul Islam")
     print("=" * 52)
     print(f"  Local:   {local_url}")
     print(f"  Network: {lan_url}")
+    print(f"  Panel:   {panel_url}")
+    print()
+    if password_required():
+        print("  Listener password: ENABLED")
+    else:
+        print("  Listener password: OFF (open access)")
+    print()
+    print("  Owner panel — manage devices & password:")
+    print(f"  {panel_url}")
+    print(f"  Token: {get_owner_token()}")
     print()
     print("  Share the Network URL with listeners on your Wi-Fi.")
-    print("  They open it in a browser and tap Connect & Play.")
     print("=" * 52)
     print()
 
@@ -91,27 +133,18 @@ def print_startup_banner(host: str, port: int, capture_mode: str) -> None:
         print(f"  Audio capture: {audio['message']}")
         if capture_mode == "virtual" and audio.get("output"):
             print(f"  Windows output switched to: {audio['output']}")
-            print("  All PC apps now play into SoundShare virtual speaker.")
     else:
         print("  !!! VIRTUAL SPEAKER NOT READY !!!")
         print(f"  {audio['message']}")
-        print()
-        if capture_mode == "virtual":
-            print("  One-time setup on this PC:")
-            print("  1. Double-click install_virtual_speaker.bat")
-            print("  2. Install VB-Audio Virtual Cable (free)")
-            print("  3. Restart SoundShare")
-        else:
-            print("  Fix on this PC:")
-            print("  1. Plug in speakers/headphones OR enable your monitor audio")
-            print("  2. Settings > System > Sound > choose an Output device")
-            print("  3. Play a test sound, then restart SoundShare")
-            print("  Quick open: start ms-settings:sound")
     print()
 
 
 async def index(_request: web.Request) -> web.Response:
     return web.FileResponse(WEB_DIR / "index.html")
+
+
+async def panel_page(_request: web.Request) -> web.Response:
+    return web.FileResponse(WEB_DIR / "panel.html")
 
 
 async def static_files(request: web.Request) -> web.Response:
@@ -125,18 +158,162 @@ async def static_files(request: web.Request) -> web.Response:
 
 
 async def status(_request: web.Request) -> web.Response:
-    connected = sum(1 for pc in pcs if pc.connectionState == "connected")
+    connected = peer_registry.connected_count()
     capture = get_capture_status()
     return web.json_response(
         {
             "listeners": connected,
-            "peers": len(pcs),
+            "peers": len(peer_registry.list_peers()),
             "capture": capture["state"],
             "capture_error": capture["error"],
             "audio_level": capture["level"],
             "capture_mode": capture["mode"],
+            "password_required": password_required(),
         }
     )
+
+
+async def auth_status(_request: web.Request) -> web.Response:
+    purge_expired_sessions()
+    return web.json_response(
+        {
+            "password_required": password_required(),
+        }
+    )
+
+
+async def auth_verify(request: web.Request) -> web.Response:
+    purge_expired_sessions()
+    if not password_required():
+        return web.json_response({"ok": True, "token": create_listener_session()})
+
+    try:
+        body = await request.json()
+    except json.JSONDecodeError:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+
+    password = str(body.get("password", ""))
+    if not verify_listener_password(password):
+        return web.json_response({"error": "Wrong password"}, status=401)
+
+    return web.json_response({"ok": True, "token": create_listener_session()})
+
+
+async def panel_settings_get(request: web.Request) -> web.Response:
+    denied = _require_owner(request)
+    if denied:
+        return denied
+    cfg = load_config()
+    return web.json_response(
+        {
+            "password_required": password_required(),
+            "blocked_count": len(cfg.get("blocked_client_ids", [])),
+            "owner_token": get_owner_token(),
+        }
+    )
+
+
+async def panel_settings_put(request: web.Request) -> web.Response:
+    denied = _require_owner(request)
+    if denied:
+        return denied
+
+    try:
+        body = await request.json()
+    except json.JSONDecodeError:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+
+    cfg = load_config()
+
+    if "password_enabled" in body:
+        enabled = bool(body["password_enabled"])
+        if not enabled:
+            cfg["listener_password"] = None
+        elif body.get("password"):
+            cfg["listener_password"] = str(body["password"]).strip()
+        elif not cfg.get("listener_password"):
+            return web.json_response(
+                {"error": "Set a password when enabling protection"}, status=400
+            )
+
+    if body.get("password") and body.get("password_enabled", True):
+        pwd = str(body["password"]).strip()
+        if pwd:
+            cfg["listener_password"] = pwd
+
+    if body.get("regenerate_owner_token"):
+        cfg["owner_token"] = secrets.token_urlsafe(24)
+
+    save_config(cfg)
+    return web.json_response(
+        {
+            "ok": True,
+            "password_required": password_required(),
+            "owner_token": get_owner_token(),
+        }
+    )
+
+
+async def panel_devices(request: web.Request) -> web.Response:
+    denied = _require_owner(request)
+    if denied:
+        return denied
+    cfg = load_config()
+    return web.json_response(
+        {
+            "devices": peer_registry.list_peers(),
+            "blocked_client_ids": cfg.get("blocked_client_ids", []),
+            "listeners": peer_registry.connected_count(),
+            "password_required": password_required(),
+            "server_time": time.time(),
+        }
+    )
+
+
+async def panel_kick(request: web.Request) -> web.Response:
+    denied = _require_owner(request)
+    if denied:
+        return denied
+
+    peer_id = request.match_info["peer_id"]
+    record = peer_registry.get(peer_id)
+    if not record:
+        return web.json_response({"error": "Device not found"}, status=404)
+
+    await close_peer(record.pc)
+    return web.json_response({"ok": True, "action": "kicked", "peer_id": peer_id})
+
+
+async def panel_block(request: web.Request) -> web.Response:
+    denied = _require_owner(request)
+    if denied:
+        return denied
+
+    peer_id = request.match_info["peer_id"]
+    record = peer_registry.get(peer_id)
+    if not record:
+        return web.json_response({"error": "Device not found"}, status=404)
+
+    block_client(record.client_id, record.ip)
+    await close_peer(record.pc)
+    return web.json_response(
+        {
+            "ok": True,
+            "action": "blocked",
+            "peer_id": peer_id,
+            "client_id": record.client_id,
+        }
+    )
+
+
+async def panel_unblock(request: web.Request) -> web.Response:
+    denied = _require_owner(request)
+    if denied:
+        return denied
+
+    client_id = request.match_info["client_id"]
+    unblock_client(client_id)
+    return web.json_response({"ok": True, "client_id": client_id})
 
 
 async def wait_for_ice_gathering(pc: RTCPeerConnection, timeout: float = 5.0) -> None:
@@ -152,17 +329,56 @@ async def wait_for_ice_gathering(pc: RTCPeerConnection, timeout: float = 5.0) ->
 
 
 async def offer(request: web.Request) -> web.Response:
-    params = await request.json()
+    purge_expired_sessions()
+
+    try:
+        params = await request.json()
+    except json.JSONDecodeError:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+
+    listener_token = params.get("listener_token") or request.headers.get(
+        "X-Listener-Token"
+    )
+    if not validate_listener_session(listener_token):
+        return web.json_response({"error": "Password required or session expired"}, status=401)
+
+    client_id = str(params.get("client_id", "unknown")).strip() or "unknown"
+    device_name = str(params.get("device_name", "Listener")).strip() or "Listener"
+    ip = _client_ip(request)
+    user_agent = request.headers.get("User-Agent", "")
+
+    if is_blocked(client_id, ip):
+        return web.json_response({"error": "Device blocked by owner"}, status=403)
+
     offer_sdp = RTCSessionDescription(sdp=params["sdp"], type=params["type"])
 
     pc = RTCPeerConnection(
         configuration=RTCConfiguration(iceServers=load_ice_servers())
     )
-    pcs.add(pc)
+    record = peer_registry.register(
+        pc,
+        client_id=client_id,
+        device_name=device_name,
+        ip=ip,
+        user_agent=user_agent,
+    )
+    logger.info(
+        "New listener %s (%s) from %s [%s]",
+        record.device_name,
+        record.client_id[:8],
+        record.ip,
+        record.peer_id,
+    )
 
     @pc.on("connectionstatechange")
     async def on_connectionstatechange() -> None:
-        logger.info("Peer connection state: %s", pc.connectionState)
+        peer_registry.update_state(pc, pc.connectionState)
+        logger.info(
+            "Peer %s (%s): %s",
+            record.device_name,
+            record.peer_id,
+            pc.connectionState,
+        )
         if pc.connectionState in ("failed", "closed", "disconnected"):
             await close_peer(pc)
 
@@ -179,18 +395,23 @@ async def offer(request: web.Request) -> web.Response:
         {
             "sdp": pc.localDescription.sdp,
             "type": pc.localDescription.type,
+            "peer_id": record.peer_id,
         }
     )
 
 
 async def close_peer(pc: RTCPeerConnection) -> None:
-    if pc in pcs:
-        pcs.discard(pc)
+    record = peer_registry.remove_pc(pc)
+    if record:
+        logger.info("Closed peer %s (%s)", record.device_name, record.peer_id)
     await pc.close()
 
 
 async def on_shutdown(_app: web.Application) -> None:
-    await asyncio.gather(*[close_peer(pc) for pc in list(pcs)], return_exceptions=True)
+    await asyncio.gather(
+        *[close_peer(pc) for pc in peer_registry.all_pcs()],
+        return_exceptions=True,
+    )
     shutdown_audio()
     teardown_virtual_speaker()
 
@@ -202,8 +423,17 @@ async def about(_request: web.Request) -> web.Response:
 def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/", index)
+    app.router.add_get("/panel", panel_page)
     app.router.add_get("/about", about)
     app.router.add_get("/status", status)
+    app.router.add_get("/api/auth/status", auth_status)
+    app.router.add_post("/api/auth/verify", auth_verify)
+    app.router.add_get("/api/panel/settings", panel_settings_get)
+    app.router.add_put("/api/panel/settings", panel_settings_put)
+    app.router.add_get("/api/panel/devices", panel_devices)
+    app.router.add_post("/api/panel/devices/{peer_id}/kick", panel_kick)
+    app.router.add_post("/api/panel/devices/{peer_id}/block", panel_block)
+    app.router.add_post("/api/panel/blocked/{client_id}/unblock", panel_unblock)
     app.router.add_post("/offer", offer)
     app.router.add_get("/web/{name}", static_files)
     app.on_shutdown.append(on_shutdown)
@@ -219,6 +449,16 @@ def main() -> None:
         action="store_true",
         help="Capture from physical speakers instead of virtual speaker",
     )
+    parser.add_argument(
+        "--password",
+        default=None,
+        help="Require this password for listeners (saved to config)",
+    )
+    parser.add_argument(
+        "--no-password",
+        action="store_true",
+        help="Disable listener password protection",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -226,10 +466,19 @@ def main() -> None:
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     )
 
+    if args.no_password:
+        cfg = load_config()
+        cfg["listener_password"] = None
+        save_config(cfg)
+    elif args.password:
+        cfg = load_config()
+        cfg["listener_password"] = args.password.strip()
+        save_config(cfg)
+
     capture_mode = "loopback" if args.loopback else "virtual"
 
     if capture_mode == "virtual":
-        setup = setup_virtual_speaker()
+        setup_virtual_speaker()
         configure_capture("virtual")
     else:
         configure_capture("loopback")

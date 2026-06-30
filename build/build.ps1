@@ -1,36 +1,47 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Build SoundShare executable and Windows installer.
+  Build SoundShare executable and single-file Windows installer.
 
-.DESCRIPTION
-  Downloads VB-Audio Virtual Cable, builds PyInstaller exe, compiles Inno Setup installer.
+.PARAMETER VbCablePath
+  Path to extracted VBCABLE_Driver_Pack45 folder (default: vendor\VBCABLE_Driver_Pack45).
 #>
+
+param(
+    [string]$VbCablePath = ""
+)
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
 $VendorDir = Join-Path $Root "vendor"
+$VbCablePackDir = Join-Path $VendorDir "VBCABLE_Driver_Pack45"
+$VbCableSetup = Join-Path $VbCablePackDir "VBCABLE_Setup_x64.exe"
 $DistDir = Join-Path $Root "dist"
 $VbCableZipUrl = "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip"
 $VbCableZipFile = Join-Path $VendorDir "VBCABLE_Driver_Pack45.zip"
-$VbCableFile = Join-Path $VendorDir "VBCABLE_Setup_x64.exe"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  SoundShare Build v1.0" -ForegroundColor Cyan
+Write-Host "  SoundShare Build v1.1" -ForegroundColor Cyan
 Write-Host "  by H M Shahadul Islam" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# 1. Vendor VB-Cable
 if (-not (Test-Path $VendorDir)) {
     New-Item -ItemType Directory -Path $VendorDir | Out-Null
 }
 
-if (-not (Test-Path $VbCableFile)) {
-    Write-Host "[1/4] Downloading VB-Audio Virtual Cable driver pack..." -ForegroundColor Yellow
+# 1. Vendor full VB-Cable driver pack
+if ($VbCablePath -and (Test-Path $VbCablePath)) {
+    Write-Host "[1/4] Copying VB-Cable driver pack from: $VbCablePath" -ForegroundColor Yellow
+    if (Test-Path $VbCablePackDir) { Remove-Item -Recurse -Force $VbCablePackDir }
+    Copy-Item -Path $VbCablePath -Destination $VbCablePackDir -Recurse
+}
+
+if (-not (Test-Path $VbCableSetup)) {
+    Write-Host "[1/4] Preparing VB-Audio Virtual Cable driver pack..." -ForegroundColor Yellow
     try {
         if (-not (Test-Path $VbCableZipFile)) {
             $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
@@ -42,22 +53,24 @@ if (-not (Test-Path $VbCableFile)) {
         }
         $zipSize = (Get-Item $VbCableZipFile).Length
         if ($zipSize -lt 100000) {
-            throw "Downloaded file too small ($zipSize bytes) - expected driver pack ZIP."
+            throw "Downloaded file too small ($zipSize bytes)."
         }
-        Expand-Archive -Path $VbCableZipFile -DestinationPath $VendorDir -Force
-        if (-not (Test-Path $VbCableFile)) {
-            throw "VBCABLE_Setup_x64.exe not found after extracting ZIP."
+        if (Test-Path $VbCablePackDir) { Remove-Item -Recurse -Force $VbCablePackDir }
+        New-Item -ItemType Directory -Path $VbCablePackDir | Out-Null
+        Expand-Archive -Path $VbCableZipFile -DestinationPath $VbCablePackDir -Force
+        if (-not (Test-Path $VbCableSetup)) {
+            throw "VBCABLE_Setup_x64.exe not found in driver pack."
         }
-        Write-Host "      Ready: $VbCableFile" -ForegroundColor Green
+        Write-Host "      Ready: $VbCablePackDir" -ForegroundColor Green
     } catch {
-        Write-Host "      FAILED to prepare VB-Cable." -ForegroundColor Red
-        Write-Host "      Download from https://vb-audio.com/Cable/" -ForegroundColor Red
-        Write-Host "      Extract VBCABLE_Setup_x64.exe to: $VendorDir" -ForegroundColor Red
+        Write-Host "      FAILED to prepare VB-Cable driver pack." -ForegroundColor Red
+        Write-Host "      Copy VBCABLE_Driver_Pack45 to: $VbCablePackDir" -ForegroundColor Red
+        Write-Host "      Or run: .\build\build.ps1 -VbCablePath 'C:\path\to\VBCABLE_Driver_Pack45'" -ForegroundColor Red
         Write-Host "      Error: $_" -ForegroundColor Red
         exit 1
     }
 } else {
-    Write-Host "[1/4] VB-Cable installer found in vendor/" -ForegroundColor Green
+    Write-Host "[1/4] VB-Cable driver pack found: $VbCablePackDir" -ForegroundColor Green
 }
 
 # 2. Install Python deps
@@ -67,8 +80,10 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # 3. PyInstaller
 Write-Host "[3/4] Building SoundShare.exe (PyInstaller)..." -ForegroundColor Yellow
+$keepSetup = Join-Path $DistDir "SoundShare-Setup-1.1.0.exe"
+$hadSetup = Test-Path $keepSetup
 if (Test-Path $DistDir) {
-    Remove-Item -Recurse -Force $DistDir
+    Get-ChildItem $DistDir -Exclude "SoundShare-Setup-1.1.0.exe" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }
 py -m PyInstaller build\soundshare.spec --noconfirm --distpath dist --workpath build\pyi-work
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -80,47 +95,47 @@ if (-not (Test-Path $ExePath)) {
 }
 Write-Host "      Built: $ExePath" -ForegroundColor Green
 
-# 4. Inno Setup installer
-Write-Host "[4/4] Compiling Windows installer..." -ForegroundColor Yellow
+# 4. Inno Setup - single-file installer
+Write-Host "[4/4] Compiling single-file installer (SoundShare-Setup-1.1.0.exe)..." -ForegroundColor Yellow
 $InnoPaths = @(
     $env:INNO_SETUP,
+    "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
     "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
     "C:\Program Files\Inno Setup 6\ISCC.exe"
 ) | Where-Object { $_ -and (Test-Path $_) }
 
 $Iscc = $InnoPaths | Select-Object -First 1
 if (-not $Iscc) {
-    Write-Host "      Inno Setup not found. Creating portable package instead..." -ForegroundColor Yellow
-    $PackageDir = Join-Path $DistDir "SoundShare-Complete"
-    if (Test-Path $PackageDir) { Remove-Item -Recurse -Force $PackageDir }
-    New-Item -ItemType Directory -Path $PackageDir | Out-Null
-    Copy-Item $ExePath (Join-Path $PackageDir "SoundShare.exe")
-    Copy-Item $VbCableFile (Join-Path $PackageDir "VBCABLE_Setup_x64.exe")
-    Copy-Item (Join-Path $Root "installer\Install-SoundShare.ps1") (Join-Path $PackageDir "Install-SoundShare.ps1")
-    Copy-Item (Join-Path $Root "installer\Install-SoundShare.bat") (Join-Path $PackageDir "Install-SoundShare.bat")
-    Copy-Item (Join-Path $Root "installer\ABOUT.txt") (Join-Path $PackageDir "ABOUT.txt")
-    Copy-Item (Join-Path $Root "installer\WELCOME.txt") (Join-Path $PackageDir "README.txt")
-    Write-Host ""
-    Write-Host "========================================" -ForegroundColor Green
-    Write-Host "  BUILD COMPLETE (portable package)" -ForegroundColor Green
-    Write-Host "========================================" -ForegroundColor Green
-    Write-Host "  Portable exe:  $ExePath"
-    Write-Host "  Full package:  $PackageDir"
-    Write-Host ""
-    Write-Host "  End users: Right-click Install-SoundShare.ps1 -> Run with PowerShell (Admin)"
-    Write-Host "  Or install Inno Setup and re-run for SoundShare-Setup-1.0.0.exe"
-    Write-Host ""
-    exit 0
+    Write-Host "      Inno Setup not found. Installing..." -ForegroundColor Yellow
+    winget install --id JRSoftware.InnoSetup -e --accept-package-agreements --accept-source-agreements 2>&1 | Out-Null
+    $InnoPaths = @(
+        "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
+        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+        "C:\Program Files\Inno Setup 6\ISCC.exe"
+    ) | Where-Object { Test-Path $_ }
+    $Iscc = $InnoPaths | Select-Object -First 1
+}
+
+if (-not $Iscc) {
+    Write-Host "      ERROR: Inno Setup required for single .exe installer." -ForegroundColor Red
+    Write-Host "      Install from https://jrsoftware.org/isinfo.php then re-run build.ps1" -ForegroundColor Red
+    exit 1
 }
 
 & $Iscc "installer\soundshare.iss"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$SetupExe = Join-Path $DistDir "SoundShare-Setup-1.0.0.exe"
+$SetupExe = Join-Path $DistDir "SoundShare-Setup-1.1.0.exe"
+if (-not (Test-Path $SetupExe)) {
+    Write-Host "      ERROR: Installer not created." -ForegroundColor Red
+    exit 1
+}
+
+$setupSize = [math]::Round((Get-Item $SetupExe).Length / 1MB, 1)
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Green
 Write-Host "  BUILD COMPLETE" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
-Write-Host "  Portable:  $ExePath"
-Write-Host "  Installer: $SetupExe"
+Write-Host "  Single installer: $SetupExe ($setupSize MB)"
+Write-Host "  Includes: SoundShare + full VB-Cable driver pack"
 Write-Host ""

@@ -10,11 +10,12 @@
 
 $ErrorActionPreference = "Stop"
 $AppName = "SoundShare"
-$AppVersion = "1.0.0"
+$AppVersion = "1.1.0"
 $InstallDir = Join-Path $env:ProgramFiles $AppName
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ExeSource = Join-Path $ScriptDir "SoundShare.exe"
-$VbCable = Join-Path $ScriptDir "VBCABLE_Setup_x64.exe"
+$VbCable = Join-Path $ScriptDir "VBCABLE_Driver_Pack45"
+$VbCableSetup = Join-Path $VbCable "VBCABLE_Setup_x64.exe"
 $Port = 8765
 
 Write-Host ""
@@ -36,12 +37,12 @@ if (-not $vbInstalled) {
 }
 
 if (-not $vbInstalled) {
-    if (-not (Test-Path $VbCable)) {
-        Write-Host "ERROR: VBCABLE_Setup_x64.exe not found." -ForegroundColor Red
+    if (-not (Test-Path $VbCableSetup)) {
+        Write-Host "ERROR: VBCABLE_Driver_Pack45 folder not found (needs VBCABLE_Setup_x64.exe)." -ForegroundColor Red
         exit 1
     }
     Write-Host "[1/4] Installing VB-Audio Virtual Cable..." -ForegroundColor Yellow
-    $proc = Start-Process -FilePath $VbCable -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-" -Wait -PassThru
+    $proc = Start-Process -FilePath $VbCableSetup -WorkingDirectory $VbCable -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-" -Wait -PassThru
     if ($proc.ExitCode -ne 0) {
         Write-Host "WARNING: VB-Cable installer exit code $($proc.ExitCode)" -ForegroundColor Yellow
     }

@@ -1,3 +1,7 @@
+const CLIENT_ID_KEY = "soundshare_client_id";
+const LISTENER_TOKEN_KEY = "soundshare_listener_token";
+const DEVICE_NAME_KEY = "soundshare_device_name";
+
 const connectBtn = document.getElementById("connectBtn");
 const muteBtn = document.getElementById("muteBtn");
 const volumeSlider = document.getElementById("volume");
@@ -9,10 +13,51 @@ const audioMeterEl = document.getElementById("audioMeter");
 const meterFillEl = document.getElementById("meterFill");
 const meterLabelEl = document.getElementById("meterLabel");
 const player = document.getElementById("player");
+const authGate = document.getElementById("authGate");
+const listenerMain = document.getElementById("listenerMain");
+const listenerPasswordInput = document.getElementById("listenerPasswordInput");
+const authBtn = document.getElementById("authBtn");
+const authError = document.getElementById("authError");
+const deviceNameInput = document.getElementById("deviceName");
 
 let pc = null;
 let statusTimer = null;
 let audioContext = null;
+let passwordRequired = false;
+
+function getClientId() {
+  let id = localStorage.getItem(CLIENT_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID ? crypto.randomUUID() : "dev-" + Date.now();
+    localStorage.setItem(CLIENT_ID_KEY, id);
+  }
+  return id;
+}
+
+function getListenerToken() {
+  return sessionStorage.getItem(LISTENER_TOKEN_KEY);
+}
+
+function setListenerToken(token) {
+  sessionStorage.setItem(LISTENER_TOKEN_KEY, token);
+}
+
+function getDeviceName() {
+  const saved = localStorage.getItem(DEVICE_NAME_KEY);
+  if (saved) return saved;
+  const ua = navigator.userAgent || "";
+  if (/iPhone/i.test(ua)) return "iPhone";
+  if (/iPad/i.test(ua)) return "iPad";
+  if (/Android/i.test(ua)) return "Android";
+  if (/Windows/i.test(ua)) return "Windows PC";
+  if (/Mac/i.test(ua)) return "Mac";
+  return "Listener";
+}
+
+deviceNameInput.value = getDeviceName();
+deviceNameInput.addEventListener("change", () => {
+  localStorage.setItem(DEVICE_NAME_KEY, deviceNameInput.value.trim() || getDeviceName());
+});
 
 function setStatus(state, label) {
   statusBadge.className = `status-badge ${state}`;
@@ -22,6 +67,70 @@ function setStatus(state, label) {
 function setConnectionState(text) {
   connectionStateEl.textContent = text;
 }
+
+function showAuthGate() {
+  authGate.classList.remove("hidden");
+  listenerMain.classList.add("hidden");
+}
+
+function showListenerMain() {
+  authGate.classList.add("hidden");
+  listenerMain.classList.remove("hidden");
+}
+
+async function checkAuth() {
+  try {
+    const res = await fetch("/api/auth/status");
+    const data = await res.json();
+    passwordRequired = data.password_required;
+
+    if (!passwordRequired) {
+      showListenerMain();
+      return;
+    }
+
+    if (getListenerToken()) {
+      showListenerMain();
+      return;
+    }
+
+    showAuthGate();
+  } catch {
+    showListenerMain();
+  }
+}
+
+async function unlockWithPassword() {
+  const password = listenerPasswordInput.value;
+  authError.classList.add("hidden");
+
+  try {
+    const res = await fetch("/api/auth/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      authError.textContent = data.error || "Wrong password";
+      authError.classList.remove("hidden");
+      return;
+    }
+
+    setListenerToken(data.token);
+    showListenerMain();
+    connect();
+  } catch {
+    authError.textContent = "Could not verify password";
+    authError.classList.remove("hidden");
+  }
+}
+
+authBtn.addEventListener("click", unlockWithPassword);
+listenerPasswordInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") unlockWithPassword();
+});
 
 async function fetchStatus() {
   try {
@@ -137,9 +246,17 @@ async function disconnect() {
 }
 
 async function connect() {
+  if (passwordRequired && !getListenerToken()) {
+    showAuthGate();
+    return;
+  }
+
   connectBtn.disabled = true;
   setStatus("connecting", "Connecting...");
   setConnectionState("Negotiating...");
+
+  const deviceName = deviceNameInput.value.trim() || getDeviceName();
+  localStorage.setItem(DEVICE_NAME_KEY, deviceName);
 
   try {
     pc = new RTCPeerConnection({
@@ -181,14 +298,31 @@ async function connect() {
     await pc.setLocalDescription(offer);
     await waitForIceGathering(pc);
 
+    const headers = { "Content-Type": "application/json" };
+    const token = getListenerToken();
+    if (token) headers["X-Listener-Token"] = token;
+
     const response = await fetch("/offer", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         sdp: pc.localDescription.sdp,
         type: pc.localDescription.type,
+        client_id: getClientId(),
+        device_name: deviceName,
+        listener_token: token,
       }),
     });
+
+    if (response.status === 401) {
+      sessionStorage.removeItem(LISTENER_TOKEN_KEY);
+      showAuthGate();
+      throw new Error("Password required");
+    }
+
+    if (response.status === 403) {
+      throw new Error("This device was blocked by the owner");
+    }
 
     if (!response.ok) {
       throw new Error(`Signaling failed (${response.status})`);
@@ -234,3 +368,4 @@ muteBtn.addEventListener("click", () => {
 });
 
 player.volume = 1;
+checkAuth();
