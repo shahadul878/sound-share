@@ -1,0 +1,22 @@
+Welcome to SoundShare!
+
+Stream your PC audio to any phone, tablet, or computer on your Wi-Fi.
+Listeners open a link in their browser — no app install needed.
+
+WHAT GETS INSTALLED
+-------------------
+- SoundShare application
+- VB-Audio Virtual Cable (virtual speaker driver)
+- Desktop shortcut
+- Windows Firewall rule (optional, port 8765)
+
+AFTER INSTALL
+-------------
+1. Launch SoundShare from your Desktop
+2. Your browser opens automatically
+3. Share the "Network" URL with listeners on the same Wi-Fi
+4. Play audio on your PC — they hear it live on their devices
+
+No physical speakers required. No extra configuration.
+
+Developed by H M Shahadul Islam

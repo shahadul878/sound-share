@@ -1,0 +1,23 @@
+# Build output
+dist/
+build/pyi-work/
+
+# VB-Audio vendor binaries (downloaded at build time)
+vendor/*
+!vendor/README.txt
+!vendor/readme.txt
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store

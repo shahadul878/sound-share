@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoundShare — Live PC Audio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/web/styles.css" />
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <main class="container">
+    <header class="header">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3v18M8 8l4-4 4 4M8 16l4 4 4-4"/>
+            <circle cx="12" cy="12" r="9"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="logo">SoundShare</h1>
+          <p class="tagline">Stream PC audio to any device on your network</p>
+        </div>
+      </div>
+      <a class="about-link" href="/about">About</a>
+    </header>
+
+    <section class="card">
+      <div id="statusBadge" class="status-badge idle">Ready</div>
+
+      <button id="connectBtn" class="connect-btn" type="button">
+        <span class="btn-icon" aria-hidden="true">&#9654;</span>
+        Connect &amp; Play
+      </button>
+
+      <div class="controls">
+        <label class="volume-label" for="volume">
+          <span>Volume</span>
+          <input id="volume" type="range" min="0" max="100" value="100" />
+        </label>
+        <button id="muteBtn" class="mute-btn" type="button" aria-pressed="false">
+          Mute
+        </button>
+      </div>
+
+      <div id="audioMeter" class="audio-meter hidden">
+        <div class="meter-header">
+          <span>PC audio signal</span>
+          <span id="meterLabel" class="meter-label">—</span>
+        </div>
+        <div class="meter-bar"><div id="meterFill" class="meter-fill"></div></div>
+      </div>
+
+      <div id="captureStatus" class="capture-status hidden"></div>
+
+      <div class="meta">
+        <span id="listenerCount">Listeners: —</span>
+        <span id="connectionState">Not connected</span>
+      </div>
+    </section>
+
+    <p class="hint">
+      No app install needed on your phone. Open this page, tap Connect &amp; Play, and listen live.
+    </p>
+
+    <footer class="footer">
+      <span>SoundShare</span>
+      <span class="dot">·</span>
+      <span>by H M Shahadul Islam</span>
+    </footer>
+  </main>
+
+  <audio id="player" autoplay playsinline webkit-playsinline></audio>
+  <script src="/web/app.js"></script>
+</body>
+</html>

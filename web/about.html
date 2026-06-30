@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About — SoundShare</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/web/styles.css" />
+</head>
+<body class="about-page">
+  <div class="bg-glow"></div>
+
+  <main class="container about-container">
+    <a class="back-link" href="/">&larr; Back to listener</a>
+
+    <header class="about-header">
+      <div class="brand-icon large" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 3v18M8 8l4-4 4 4M8 16l4 4 4-4"/>
+          <circle cx="12" cy="12" r="9"/>
+        </svg>
+      </div>
+      <h1>SoundShare</h1>
+      <p class="version">Version 1.0</p>
+    </header>
+
+    <section class="card about-card">
+      <h2>What is SoundShare?</h2>
+      <p>
+        SoundShare streams your PC system audio to phones, tablets, and other devices on your
+        local network. Listeners open a link in their browser — no app install required.
+        Multiple devices can listen at once with low-latency WebRTC audio.
+      </p>
+      <p>
+        The Windows package includes a virtual audio driver so SoundShare works even without
+        physical speakers connected. Everything is configured automatically on install.
+      </p>
+    </section>
+
+    <section class="card about-card developer-card">
+      <h2>Developer</h2>
+      <div class="developer-profile">
+        <div class="developer-avatar">HS</div>
+        <div>
+          <h3>H M Shahadul Islam</h3>
+          <p class="developer-title">Senior WordPress Engineer</p>
+        </div>
+      </div>
+      <p class="developer-bio">
+        Senior WordPress engineer specializing in scalable backend architecture, custom plugin
+        ecosystems, and high-availability infrastructure. 7+ years architecting enterprise
+        solutions handling 100K+ concurrent users, mentoring distributed development teams,
+        and contributing to the WordPress open-source ecosystem. Deep expertise in WordPress
+        Core APIs, object-oriented plugin architecture, and LEMP stack optimization with focus
+        on security hardening and performance engineering.
+      </p>
+    </section>
+
+    <section class="card about-card">
+      <h2>Third-party components</h2>
+      <ul class="credits-list">
+        <li><strong>VB-Audio Virtual Cable</strong> — virtual audio driver (vb-audio.com)</li>
+        <li><strong>WebRTC / aiortc</strong> — real-time audio streaming</li>
+        <li><strong>Python</strong> — application runtime</li>
+      </ul>
+    </section>
+
+    <footer class="footer">
+      <span>&copy; 2026 H M Shahadul Islam. All rights reserved.</span>
+    </footer>
+  </main>
+</body>
+</html>

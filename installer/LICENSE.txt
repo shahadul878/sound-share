@@ -1,0 +1,21 @@
+SoundShare License Agreement
+
+Copyright (c) 2026 H M Shahadul Islam. All rights reserved.
+
+SoundShare is provided as-is for personal and commercial use.
+
+THIRD-PARTY COMPONENTS
+
+This software bundles VB-Audio Virtual Cable (vb-audio.com), which is
+subject to VB-Audio's own license terms. VB-Audio Virtual Cable is
+donationware — please consider supporting VB-Audio at vb-audio.com.
+
+Other open-source components include Python, aiortc, aiohttp, and related
+libraries under their respective licenses.
+
+DISCLAIMER
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+Developer: H M Shahadul Islam
+Senior WordPress Engineer
