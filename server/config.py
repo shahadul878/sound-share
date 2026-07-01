@@ -3,17 +3,37 @@
 from __future__ import annotations
 
 import json
+import logging
 import secrets
+import shutil
 from pathlib import Path
 from typing import Any
 
-from server.paths import get_install_root
+from server.paths import get_config_dir, get_install_root
+
+logger = logging.getLogger(__name__)
 
 CONFIG_FILE = "soundshare_config.json"
 
 
 def _config_path() -> Path:
+    return get_config_dir() / CONFIG_FILE
+
+
+def _legacy_config_path() -> Path:
     return get_install_root() / CONFIG_FILE
+
+
+def _migrate_legacy_config() -> None:
+    """Move config from Program Files to AppData (one-time, installed builds)."""
+    legacy = _legacy_config_path()
+    target = _config_path()
+    if legacy.is_file() and not target.is_file():
+        try:
+            shutil.copy2(legacy, target)
+            logger.info("Migrated config to %s", target)
+        except OSError as exc:
+            logger.warning("Could not migrate legacy config: %s", exc)
 
 
 def _default_config() -> dict[str, Any]:
@@ -26,6 +46,7 @@ def _default_config() -> dict[str, Any]:
 
 
 def load_config() -> dict[str, Any]:
+    _migrate_legacy_config()
     path = _config_path()
     if not path.is_file():
         cfg = _default_config()
@@ -45,6 +66,7 @@ def load_config() -> dict[str, Any]:
 
 def save_config(cfg: dict[str, Any]) -> None:
     path = _config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
 
 

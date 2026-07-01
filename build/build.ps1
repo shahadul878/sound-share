@@ -80,10 +80,10 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 # 3. PyInstaller
 Write-Host "[3/4] Building SoundShare.exe (PyInstaller)..." -ForegroundColor Yellow
-$keepSetup = Join-Path $DistDir "SoundShare-Setup-1.1.1.exe"
+$keepSetup = Join-Path $DistDir "SoundShare-Setup-1.1.2.exe"
 $hadSetup = Test-Path $keepSetup
 if (Test-Path $DistDir) {
-    Get-ChildItem $DistDir -Exclude "SoundShare-Setup-1.1.1.exe" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    Get-ChildItem $DistDir -Exclude "SoundShare-Setup-1.1.2.exe" | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 }
 py -m PyInstaller build\soundshare.spec --noconfirm --distpath dist --workpath build\pyi-work
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -96,7 +96,7 @@ if (-not (Test-Path $ExePath)) {
 Write-Host "      Built: $ExePath" -ForegroundColor Green
 
 # 4. Inno Setup - single-file installer
-Write-Host "[4/4] Compiling single-file installer (SoundShare-Setup-1.1.1.exe)..." -ForegroundColor Yellow
+Write-Host "[4/4] Compiling single-file installer (SoundShare-Setup-1.1.2.exe)..." -ForegroundColor Yellow
 $InnoPaths = @(
     $env:INNO_SETUP,
     "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
@@ -125,7 +125,7 @@ if (-not $Iscc) {
 & $Iscc "installer\soundshare.iss"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$SetupExe = Join-Path $DistDir "SoundShare-Setup-1.1.1.exe"
+$SetupExe = Join-Path $DistDir "SoundShare-Setup-1.1.2.exe"
 if (-not (Test-Path $SetupExe)) {
     Write-Host "      ERROR: Installer not created." -ForegroundColor Red
     exit 1

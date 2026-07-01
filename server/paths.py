@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -17,7 +18,18 @@ def get_web_dir() -> Path:
 
 
 def get_install_root() -> Path:
-    """Directory where the executable lives (for logs, config)."""
+    """Directory where the executable lives."""
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent.parent
+
+
+def get_config_dir() -> Path:
+    """Writable config directory (AppData when installed under Program Files)."""
+    if getattr(sys, "frozen", False):
+        base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+        config_dir = base / "SoundShare"
+    else:
+        config_dir = get_install_root()
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir

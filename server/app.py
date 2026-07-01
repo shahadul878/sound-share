@@ -527,7 +527,15 @@ def main() -> None:
 
     print_startup_banner(args.host, args.port, capture_mode)
     app = create_app()
-    web.run_app(app, host=args.host, port=args.port, print=None)
+    try:
+        web.run_app(app, host=args.host, port=args.port, print=None)
+    except OSError as exc:
+        if getattr(exc, "errno", None) == 10048 or "10048" in str(exc):
+            print()
+            print("  ERROR: Port %s is already in use." % args.port)
+            print("  Close other SoundShare windows or run: SoundShare.exe --port 8766")
+            print()
+        raise
 
 
 if __name__ == "__main__":
