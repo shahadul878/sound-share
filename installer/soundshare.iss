@@ -2,7 +2,7 @@
 ; Developer: H M Shahadul Islam
 
 #define MyAppName "SoundShare"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "1.1.1"
 #define MyAppPublisher "H M Shahadul Islam"
 #define MyAppURL "https://github.com/"
 #define MyAppExeName "SoundShare.exe"

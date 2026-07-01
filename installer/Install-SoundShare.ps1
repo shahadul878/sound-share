@@ -10,7 +10,7 @@
 
 $ErrorActionPreference = "Stop"
 $AppName = "SoundShare"
-$AppVersion = "1.1.0"
+$AppVersion = "1.1.1"
 $InstallDir = Join-Path $env:ProgramFiles $AppName
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ExeSource = Join-Path $ScriptDir "SoundShare.exe"
