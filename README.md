@@ -8,7 +8,7 @@ Developed by **H M Shahadul Islam**
 
 ## For end users (Windows installer)
 
-1. Run **`SoundShare-Setup-1.1.0.exe`** — one file, everything included
+1. Run **`SoundShare-Setup-1.1.4.exe`** — one file, everything included
 2. Complete the wizard — VB-Audio Virtual Cable (full driver pack) installs automatically
 3. Launch **SoundShare** from Desktop
 4. Share the **Network** URL with phones on your Wi-Fi
@@ -42,7 +42,7 @@ cd soundshare
 ```
 
 Produces:
-- `dist/SoundShare-Setup-1.1.0.exe` — **single-file installer** (SoundShare + full VB-Cable driver pack)
+- `dist/SoundShare-Setup-1.1.4.exe` — **single-file installer** (SoundShare + full VB-Cable driver pack)
 - `dist/SoundShare.exe` — portable app only
 
 To use your own VB-Cable driver pack folder:

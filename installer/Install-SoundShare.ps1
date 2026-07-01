@@ -10,7 +10,7 @@
 
 $ErrorActionPreference = "Stop"
 $AppName = "SoundShare"
-$AppVersion = "1.1.2"
+$AppVersion = "1.1.4"
 $InstallDir = Join-Path $env:ProgramFiles $AppName
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $ExeSource = Join-Path $ScriptDir "SoundShare.exe"
@@ -61,10 +61,16 @@ if (Test-Path $about) {
     Copy-Item -Path $about -Destination (Join-Path $InstallDir "ABOUT.txt") -Force
 }
 
-# Firewall
-Write-Host "[3/4] Configuring Windows Firewall (port $Port)..." -ForegroundColor Yellow
-netsh advfirewall firewall delete rule name="SoundShare" 2>$null | Out-Null
-netsh advfirewall firewall add rule name="SoundShare" dir=in action=allow protocol=TCP localport=$Port | Out-Null
+# Firewall — HTTP + WebRTC media (UDP via program rule)
+Write-Host "[3/4] Configuring Windows Firewall..." -ForegroundColor Yellow
+$ExePath = Join-Path $InstallDir "SoundShare.exe"
+$rules = @("SoundShare", "SoundShare HTTP", "SoundShare App In", "SoundShare App Out")
+foreach ($rule in $rules) {
+    netsh advfirewall firewall delete rule name="$rule" 2>$null | Out-Null
+}
+netsh advfirewall firewall add rule name="SoundShare HTTP" dir=in action=allow protocol=TCP localport=$Port profile=any | Out-Null
+netsh advfirewall firewall add rule name="SoundShare App In" dir=in action=allow program="$ExePath" profile=any | Out-Null
+netsh advfirewall firewall add rule name="SoundShare App Out" dir=out action=allow program="$ExePath" profile=any | Out-Null
 
 # Shortcuts
 Write-Host "[4/4] Creating shortcuts..." -ForegroundColor Yellow

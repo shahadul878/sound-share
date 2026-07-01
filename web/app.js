@@ -286,7 +286,15 @@ async function connect() {
         }
       } else if (state === "connecting") {
         setStatus("connecting", "Connecting...");
-      } else if (state === "failed" || state === "disconnected" || state === "closed") {
+      } else if (state === "failed") {
+        setStatus("error", "Connection failed");
+        setConnectionState(
+          "WebRTC failed — allow SoundShare in Windows Firewall (Private network) and try again"
+        );
+        connectBtn.textContent = "Connect & Play";
+        connectBtn.disabled = false;
+        stopStatusPolling();
+      } else if (state === "disconnected" || state === "closed") {
         setStatus("error", "Disconnected");
         connectBtn.textContent = "Connect & Play";
         connectBtn.disabled = false;

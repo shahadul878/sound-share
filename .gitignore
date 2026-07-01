@@ -1,6 +1,7 @@
 # Build output
 dist/
 build/pyi-work/
+build/soundshare/
 
 # VB-Audio vendor binaries (downloaded or copied at build time)
 vendor/*

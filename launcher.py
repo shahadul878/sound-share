@@ -17,6 +17,11 @@ def _open_browser_later(port: int) -> None:
 
 
 def main() -> None:
+    from server.single_instance import ensure_single_instance
+
+    if not ensure_single_instance():
+        sys.exit(0)
+
     if len(sys.argv) == 1:
         sys.argv.extend(["--port", "8765"])
 

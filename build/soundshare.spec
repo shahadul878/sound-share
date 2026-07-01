@@ -39,6 +39,8 @@ a = Analysis(
         "server.auth",
         "server.peers",
         "server.virtual_speaker",
+        "server.firewall",
+        "server.single_instance",
     ],
     hookspath=[],
     hooksconfig={},

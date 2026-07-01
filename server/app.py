@@ -9,7 +9,10 @@ import logging
 import os
 import secrets
 import socket
+import sys
 import time
+
+from pathlib import Path
 
 import qrcode
 from aiohttp import web
@@ -39,7 +42,9 @@ from server.config import (
     save_config,
     unblock_client,
 )
+from server.firewall import ensure_firewall_rules
 from server.paths import get_web_dir
+from server.single_instance import ensure_single_instance
 from server.peers import peer_registry
 from server.virtual_speaker import setup_virtual_speaker, teardown_virtual_speaker
 
@@ -503,6 +508,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if not ensure_single_instance():
+        sys.exit(0)
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -526,6 +534,12 @@ def main() -> None:
         configure_capture("loopback")
 
     print_startup_banner(args.host, args.port, capture_mode)
+
+    if sys.platform == "win32":
+        exe = Path(sys.executable) if getattr(sys, "frozen", False) else None
+        if exe:
+            ensure_firewall_rules(exe, args.port)
+
     app = create_app()
     try:
         web.run_app(app, host=args.host, port=args.port, print=None)

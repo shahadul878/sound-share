@@ -4,12 +4,12 @@
 
 Running the build produces:
 
-- `dist/SoundShare-Setup-1.1.0.exe` — **single-file installer** (~67 MB) containing:
+- `dist/SoundShare-Setup-1.1.4.exe` — **single-file installer** (~67 MB) containing:
   - SoundShare application
   - Full VB-Audio Virtual Cable driver pack (`VBCABLE_Driver_Pack45`)
   - Silent VB-Cable install during setup
   - Desktop shortcut
-  - Windows Firewall rule for port 8765
+  - Windows Firewall rules for HTTP + WebRTC audio
 - `dist/SoundShare.exe` — portable app only (no installer)
 
 ## Prerequisites (on build machine)
@@ -40,19 +40,19 @@ The script will:
 
 1. Copy or download the full `VBCABLE_Driver_Pack45` folder into `vendor/`
 2. Build `SoundShare.exe` with PyInstaller
-3. Compile `SoundShare-Setup-1.1.0.exe` with Inno Setup (single file)
+3. Compile `SoundShare-Setup-1.1.4.exe` with Inno Setup (single file)
 
 ## Output
 
 ```
 soundshare/dist/
-  SoundShare-Setup-1.1.0.exe     # Single-file installer (recommended for end users)
+  SoundShare-Setup-1.1.4.exe     # Single-file installer (recommended for end users)
   SoundShare.exe                   # Portable executable only
 ```
 
 ## End-user install
 
-1. Run **`SoundShare-Setup-1.1.0.exe`** as Administrator
+1. Run **`SoundShare-Setup-1.1.4.exe`** as Administrator
 2. Follow the wizard (VB-Cable installs silently from bundled driver pack)
 3. Launch **SoundShare** from Desktop
 4. Share the Network URL with phones on Wi-Fi

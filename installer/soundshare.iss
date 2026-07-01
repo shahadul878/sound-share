@@ -2,7 +2,7 @@
 ; Developer: H M Shahadul Islam
 
 #define MyAppName "SoundShare"
-#define MyAppVersion "1.1.2"
+#define MyAppVersion "1.1.4"
 #define MyAppPublisher "H M Shahadul Islam"
 #define MyAppURL "https://github.com/"
 #define MyAppExeName "SoundShare.exe"
@@ -38,7 +38,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
-Name: "firewall"; Description: "Allow SoundShare through Windows Firewall (port 8765)"; GroupDescription: "Network:"; Flags: checkedonce
+Name: "firewall"; Description: "Allow SoundShare through Windows Firewall (HTTP + WebRTC audio)"; GroupDescription: "Network:"; Flags: checkedonce
 
 [Files]
 ; VB-Audio Virtual Cable - full driver pack (setup needs all files in same folder)
@@ -56,13 +56,22 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 [Run]
 ; Silent install VB-Audio Virtual Cable
 Filename: "{tmp}\vbcable\VBCABLE_Setup_x64.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"; StatusMsg: "Installing virtual audio driver..."; Flags: waituntilterminated; Check: VbcableNeeded
-; Windows Firewall rule
-Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""SoundShare"" dir=in action=allow protocol=TCP localport=8765"; Flags: runhidden; Tasks: firewall; StatusMsg: "Configuring firewall..."
+; Windows Firewall — HTTP signaling + WebRTC media (UDP via app rule)
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""SoundShare"""; Flags: runhidden; Tasks: firewall
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""SoundShare HTTP"""; Flags: runhidden; Tasks: firewall
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""SoundShare App In"""; Flags: runhidden; Tasks: firewall
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""SoundShare App Out"""; Flags: runhidden; Tasks: firewall
+Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""SoundShare HTTP"" dir=in action=allow protocol=TCP localport=8765 profile=any"; Flags: runhidden; Tasks: firewall; StatusMsg: "Configuring firewall..."
+Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""SoundShare App In"" dir=in action=allow program=""{app}\{#MyAppExeName}"" profile=any"; Flags: runhidden; Tasks: firewall
+Filename: "netsh"; Parameters: "advfirewall firewall add rule name=""SoundShare App Out"" dir=out action=allow program=""{app}\{#MyAppExeName}"" profile=any"; Flags: runhidden; Tasks: firewall
 ; Launch after install
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""SoundShare"""; Flags: runhidden; Tasks: firewall
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""SoundShare HTTP"""; Flags: runhidden; Tasks: firewall
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""SoundShare App In"""; Flags: runhidden; Tasks: firewall
+Filename: "netsh"; Parameters: "advfirewall firewall delete rule name=""SoundShare App Out"""; Flags: runhidden; Tasks: firewall
 
 [Code]
 function VbcableInstalled: Boolean;
