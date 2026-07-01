@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoundShare Host</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/web/styles.css" />
+</head>
+<body class="host-page">
+  <div class="bg-glow"></div>
+
+  <main class="container host-container">
+    <header class="header">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 3v18M8 8l4-4 4 4M8 16l4 4 4-4"/>
+            <circle cx="12" cy="12" r="9"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="logo">SoundShare</h1>
+          <p class="tagline">Host dashboard — share audio on your network</p>
+        </div>
+      </div>
+      <a class="about-link" href="/panel">Panel</a>
+    </header>
+
+    <div class="panel-stats">
+      <div class="stat-card">
+        <span class="stat-value" id="statListeners">0</span>
+        <span class="stat-label">Live listeners</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="statCapture">—</span>
+        <span class="stat-label">Audio capture</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="statSecurity">Open</span>
+        <span class="stat-label">Access</span>
+      </div>
+    </div>
+
+    <section class="card host-section">
+      <h2>Share with listeners</h2>
+      <p class="panel-hint">Phones and tablets on the same Wi-Fi open this URL and tap Connect &amp; Play.</p>
+      <label class="field-label">Network URL</label>
+      <div class="token-row">
+        <code id="networkUrl" class="token-display">Loading…</code>
+        <button id="copyUrlBtn" class="secondary-btn" type="button">Copy</button>
+      </div>
+      <div id="qrBox" class="qr-box hidden">
+        <img id="qrImage" alt="QR code for listener URL" />
+      </div>
+      <p id="captureWarning" class="form-error hidden"></p>
+    </section>
+
+    <section class="card host-section">
+      <h2>Quick links</h2>
+      <div class="host-links">
+        <a class="host-link-btn" href="/" target="_blank">Listener page (preview)</a>
+        <a class="host-link-btn" href="/panel">Owner panel — devices &amp; password</a>
+        <a class="host-link-btn" href="/about">About</a>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <span>SoundShare v1.1</span>
+      <span class="dot">·</span>
+      <span>by H M Shahadul Islam</span>
+    </footer>
+  </main>
+
+  <script src="/web/host.js"></script>
+</body>
+</html>

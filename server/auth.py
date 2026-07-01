@@ -35,6 +35,8 @@ def verify_listener_password(password: str) -> bool:
     expected = get_listener_password()
     if not expected:
         return True
+    if len(password) != len(expected):
+        return False
     return secrets.compare_digest(password, expected)
 
 

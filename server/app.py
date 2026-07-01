@@ -80,9 +80,24 @@ def _client_ip(request: web.Request) -> str:
     return "unknown"
 
 
+def _is_localhost(request: web.Request) -> bool:
+    ip = _client_ip(request)
+    return ip in ("127.0.0.1", "::1", "localhost")
+
+
+def _tokens_match(provided: str, expected: str) -> bool:
+    if not provided or not expected:
+        return False
+    if len(provided) != len(expected):
+        return False
+    return secrets.compare_digest(provided, expected)
+
+
 def _require_owner(request: web.Request) -> web.Response | None:
+    if _is_localhost(request):
+        return None
     token = request.headers.get("X-Owner-Token") or request.query.get("token", "")
-    if not token or not secrets.compare_digest(token, get_owner_token()):
+    if not _tokens_match(token, get_owner_token()):
         return web.json_response({"error": "Unauthorized"}, status=401)
     return None
 
@@ -91,7 +106,7 @@ def print_startup_banner(host: str, port: int, capture_mode: str) -> None:
     lan_ip = get_lan_ip()
     local_url = f"http://127.0.0.1:{port}"
     lan_url = f"http://{lan_ip}:{port}"
-    panel_url = f"{local_url}/panel"
+    panel_url = f"{local_url}/host"
 
     print()
     print("=" * 52)
@@ -99,16 +114,17 @@ def print_startup_banner(host: str, port: int, capture_mode: str) -> None:
     print("=" * 52)
     print(f"  Local:   {local_url}")
     print(f"  Network: {lan_url}")
-    print(f"  Panel:   {panel_url}")
+    print(f"  Host:    {panel_url}")
+    print(f"  Panel:   {local_url}/panel")
     print()
     if password_required():
         print("  Listener password: ENABLED")
     else:
         print("  Listener password: OFF (open access)")
     print()
-    print("  Owner panel — manage devices & password:")
-    print(f"  {panel_url}")
-    print(f"  Token: {get_owner_token()}")
+    print("  Host dashboard opens automatically on this PC.")
+    print(f"  Owner panel (devices & password): {local_url}/panel")
+    print(f"  Owner token (remote panel access): {get_owner_token()}")
     print()
     print("  Share the Network URL with listeners on your Wi-Fi.")
     print("=" * 52)
@@ -141,6 +157,30 @@ def print_startup_banner(host: str, port: int, capture_mode: str) -> None:
 
 async def index(_request: web.Request) -> web.Response:
     return web.FileResponse(WEB_DIR / "index.html")
+
+
+async def host_page(_request: web.Request) -> web.Response:
+    return web.FileResponse(WEB_DIR / "host.html")
+
+
+async def host_info(request: web.Request) -> web.Response:
+    host = request.host or f"127.0.0.1:{DEFAULT_PORT}"
+    hostname = host.split(":")[0]
+    port = host.split(":")[1] if ":" in host else str(DEFAULT_PORT)
+    lan_ip = get_lan_ip()
+    capture = get_capture_status()
+    return web.json_response(
+        {
+            "local_url": f"http://127.0.0.1:{port}/",
+            "network_url": f"http://{lan_ip}:{port}/",
+            "listeners": peer_registry.connected_count(),
+            "password_required": password_required(),
+            "capture": capture["state"],
+            "capture_error": capture["error"],
+            "audio_level": capture["level"],
+            "is_localhost": _is_localhost(request),
+        }
+    )
 
 
 async def panel_page(_request: web.Request) -> web.Response:
@@ -423,9 +463,11 @@ async def about(_request: web.Request) -> web.Response:
 def create_app() -> web.Application:
     app = web.Application()
     app.router.add_get("/", index)
+    app.router.add_get("/host", host_page)
     app.router.add_get("/panel", panel_page)
     app.router.add_get("/about", about)
     app.router.add_get("/status", status)
+    app.router.add_get("/api/host/info", host_info)
     app.router.add_get("/api/auth/status", auth_status)
     app.router.add_post("/api/auth/verify", auth_verify)
     app.router.add_get("/api/panel/settings", panel_settings_get)

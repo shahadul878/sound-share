@@ -293,12 +293,34 @@ blockedList.addEventListener("click", (e) => {
   unblockAction(btn.dataset.clientId);
 });
 
-// Init
-if (getOwnerToken()) {
-  api("/api/panel/settings")
-    .then((res) => (res.ok ? showDashboard() : showLogin()))
-    .catch(() => showLogin());
-} else {
+// Init — localhost panel access works without token (server-side)
+async function initPanel() {
+  try {
+    const res = await fetch("/api/panel/settings");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.owner_token) setOwnerToken(data.owner_token);
+      showDashboard();
+      return;
+    }
+  } catch {
+    // fall through to login
+  }
+
+  if (getOwnerToken()) {
+    try {
+      const res = await api("/api/panel/settings");
+      if (res.ok) {
+        showDashboard();
+        return;
+      }
+    } catch {
+      // fall through
+    }
+  }
+
   showLogin();
   loginSection.classList.remove("hidden");
 }
+
+initPanel();

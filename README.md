@@ -87,7 +87,7 @@ py launcher.py --no-password         # disable password protection
 
 ### Owner panel
 
-Open **`http://127.0.0.1:8765/panel`** on the host PC (opens automatically on launch).
+Open **`http://127.0.0.1:8765/host`** on the host PC (opens automatically on launch).
 
 - View all connected devices in real time
 - **Remove** — disconnect a listener
