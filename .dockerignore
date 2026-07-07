@@ -1,0 +1,14 @@
+dist/
+build/
+vendor/
+.git/
+.gitignore
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.exe
+soundshare_config.json
+installer/
+*.md
+!DEPLOY_RAILWAY.md

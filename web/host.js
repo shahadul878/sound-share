@@ -27,8 +27,12 @@ async function refresh() {
       qrBox.classList.remove("hidden");
     }
 
-    if (data.capture_error) {
+    if data.capture_error) {
       captureWarning.textContent = "Audio issue: " + data.capture_error;
+      captureWarning.classList.remove("hidden");
+    } else if (data.cloud_mode && data.silent_audio) {
+      captureWarning.textContent =
+        "Cloud host: streams silence. Use the Windows desktop app to share real PC audio.";
       captureWarning.classList.remove("hidden");
     } else if (data.capture !== "live") {
       captureWarning.textContent =

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import secrets
 import shutil
 from pathlib import Path
@@ -58,6 +59,15 @@ def load_config() -> dict[str, Any]:
         data = {}
     base = _default_config()
     base.update({k: v for k, v in data.items() if k in base})
+
+    owner_env = os.environ.get("SOUNDSHARE_OWNER_TOKEN", "").strip()
+    if owner_env:
+        base["owner_token"] = owner_env
+
+    if "SOUNDSHARE_LISTENER_PASSWORD" in os.environ:
+        pwd_env = os.environ.get("SOUNDSHARE_LISTENER_PASSWORD", "").strip()
+        base["listener_password"] = pwd_env or None
+
     if not base.get("owner_token"):
         base["owner_token"] = secrets.token_urlsafe(24)
         save_config(base)

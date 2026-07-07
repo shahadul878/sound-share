@@ -21,6 +21,7 @@ from aiortc.rtcconfiguration import RTCIceServer
 
 from server.audio import (
     configure_capture,
+    enable_silent_audio,
     get_capture_status,
     get_relayed_track,
     probe_audio_devices,
@@ -44,6 +45,13 @@ from server.config import (
 )
 from server.firewall import ensure_firewall_rules
 from server.paths import get_web_dir
+from server.platform import (
+    get_host_dashboard_url,
+    get_port,
+    get_public_listener_url,
+    is_cloud_deploy,
+    use_silent_audio,
+)
 from server.single_instance import ensure_single_instance
 from server.peers import peer_registry
 from server.virtual_speaker import setup_virtual_speaker, teardown_virtual_speaker
@@ -110,17 +118,24 @@ def _require_owner(request: web.Request) -> web.Response | None:
 def print_startup_banner(host: str, port: int, capture_mode: str) -> None:
     lan_ip = get_lan_ip()
     local_url = f"http://127.0.0.1:{port}"
-    lan_url = f"http://{lan_ip}:{port}"
-    panel_url = f"{local_url}/host"
+    public_url = get_public_listener_url()
+    network_url = public_url or f"http://{lan_ip}:{port}/"
+    panel_url = get_host_dashboard_url() or f"{local_url}/host"
 
     print()
     print("=" * 52)
     print("  SoundShare v1.1 — by H M Shahadul Islam")
     print("=" * 52)
     print(f"  Local:   {local_url}")
-    print(f"  Network: {lan_url}")
+    print(f"  Network: {network_url.rstrip('/')}")
     print(f"  Host:    {panel_url}")
     print(f"  Panel:   {local_url}/panel")
+    if is_cloud_deploy():
+        print()
+        print("  Cloud mode: public URL above (Railway / SOUNDSHARE_CLOUD)")
+        if use_silent_audio():
+            print("  Audio: silent stream (no hardware in container)")
+            print("  For real PC audio, use the Windows desktop app.")
     print()
     if password_required():
         print("  Listener password: ENABLED")
@@ -132,17 +147,25 @@ def print_startup_banner(host: str, port: int, capture_mode: str) -> None:
     print(f"  Owner token (remote panel access): {get_owner_token()}")
     print()
     print("  Share the Network URL with listeners on your Wi-Fi.")
+    if is_cloud_deploy():
+        print("  Set SOUNDSHARE_OWNER_TOKEN in Railway for remote panel access.")
     print("=" * 52)
     print()
 
     qr = qrcode.QRCode(border=1)
-    qr.add_data(lan_url)
+    qr.add_data(network_url.rstrip("/"))
     qr.make(fit=True)
     try:
         qr.print_ascii(invert=True)
     except UnicodeEncodeError:
-        print(f"  QR code URL: {lan_url}")
+        print(f"  QR code URL: {network_url.rstrip('/')}")
     print()
+
+    if use_silent_audio():
+        print("  Mode: Cloud silent audio (connectivity test / demo)")
+        print("  Audio capture: streaming silence")
+        print()
+        return
 
     audio = probe_audio_devices(capture_mode)
     if capture_mode == "virtual":
@@ -168,22 +191,29 @@ async def host_page(_request: web.Request) -> web.Response:
     return web.FileResponse(WEB_DIR / "host.html")
 
 
+async def health(_request: web.Request) -> web.Response:
+    return web.json_response({"status": "ok", "service": "soundshare"})
+
+
 async def host_info(request: web.Request) -> web.Response:
     host = request.host or f"127.0.0.1:{DEFAULT_PORT}"
-    hostname = host.split(":")[0]
     port = host.split(":")[1] if ":" in host else str(DEFAULT_PORT)
     lan_ip = get_lan_ip()
+    public_url = get_public_listener_url(request)
+    network_url = public_url or f"http://{lan_ip}:{port}/"
     capture = get_capture_status()
     return web.json_response(
         {
             "local_url": f"http://127.0.0.1:{port}/",
-            "network_url": f"http://{lan_ip}:{port}/",
+            "network_url": network_url,
             "listeners": peer_registry.connected_count(),
             "password_required": password_required(),
             "capture": capture["state"],
             "capture_error": capture["error"],
             "audio_level": capture["level"],
             "is_localhost": _is_localhost(request),
+            "cloud_mode": is_cloud_deploy(),
+            "silent_audio": use_silent_audio(),
         }
     )
 
@@ -471,6 +501,7 @@ def create_app() -> web.Application:
     app.router.add_get("/host", host_page)
     app.router.add_get("/panel", panel_page)
     app.router.add_get("/about", about)
+    app.router.add_get("/health", health)
     app.router.add_get("/status", status)
     app.router.add_get("/api/host/info", host_info)
     app.router.add_get("/api/auth/status", auth_status)
@@ -507,8 +538,9 @@ def main() -> None:
         help="Disable listener password protection",
     )
     args = parser.parse_args()
+    args.port = get_port(args.port)
 
-    if not ensure_single_instance():
+    if not is_cloud_deploy() and not ensure_single_instance():
         sys.exit(0)
 
     logging.basicConfig(
@@ -525,9 +557,12 @@ def main() -> None:
         cfg["listener_password"] = args.password.strip()
         save_config(cfg)
 
-    capture_mode = "loopback" if args.loopback else "virtual"
+    capture_mode = "loopback" if args.loopback or is_cloud_deploy() else "virtual"
 
-    if capture_mode == "virtual":
+    if use_silent_audio():
+        enable_silent_audio()
+        configure_capture("loopback")
+    elif capture_mode == "virtual":
         setup_virtual_speaker()
         configure_capture("virtual")
     else:

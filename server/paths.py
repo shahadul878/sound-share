@@ -26,6 +26,12 @@ def get_install_root() -> Path:
 
 def get_config_dir() -> Path:
     """Writable config directory (AppData when installed under Program Files)."""
+    cloud_dir = os.environ.get("SOUNDSHARE_DATA_DIR", "").strip()
+    if cloud_dir:
+        config_dir = Path(cloud_dir)
+        config_dir.mkdir(parents=True, exist_ok=True)
+        return config_dir
+
     if getattr(sys, "frozen", False):
         base = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
         config_dir = base / "SoundShare"

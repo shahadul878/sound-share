@@ -16,6 +16,11 @@ Developed by **H M Shahadul Islam**
 
 No Python, no extra downloads, no manual sound configuration.
 
+### Cloud deploy (Railway)
+
+For a public URL over the internet (demo / remote listeners), see **[DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md)**.  
+PC audio capture requires the Windows installer above.
+
 ---
 
 ## For developers (run from source)

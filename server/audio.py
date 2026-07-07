@@ -378,11 +378,55 @@ def probe_audio_devices(mode: str = "virtual") -> dict:
 
 
 _source_track: LoopbackAudioTrack | None = None
+_silent_track: "SilentAudioTrack | None" = None
 _relay = MediaRelay()
+_use_silent = False
+
+
+def enable_silent_audio() -> None:
+    global _use_silent
+    _use_silent = True
+    LoopbackAudioTrack.capture_state = "live"
+    LoopbackAudioTrack.capture_error = None
+
+
+class SilentAudioTrack(MediaStreamTrack):
+    """Streams silence — used on cloud hosts without audio hardware."""
+
+    kind = "audio"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._pts = 0
+        self._start_time: float | None = None
+
+    async def recv(self) -> av.AudioFrame:
+        if self._start_time is None:
+            self._start_time = time.time()
+            self._pts = 0
+        else:
+            target = self._start_time + (self._pts / SAMPLE_RATE)
+            wait = target - time.time()
+            if wait > 0:
+                await asyncio.sleep(wait)
+
+        pcm_s16 = np.zeros((1, FRAME_SAMPLES * CHANNELS), dtype=np.int16)
+        LoopbackAudioTrack.audio_level = 0.0
+
+        frame = av.AudioFrame.from_ndarray(pcm_s16, format="s16", layout="stereo")
+        frame.sample_rate = SAMPLE_RATE
+        frame.pts = self._pts
+        frame.time_base = TIME_BASE
+        self._pts += FRAME_SAMPLES
+        return frame
 
 
 def get_relayed_track() -> MediaStreamTrack:
-    global _source_track
+    global _source_track, _silent_track
+    if _use_silent:
+        if _silent_track is None:
+            _silent_track = SilentAudioTrack()
+        return _relay.subscribe(_silent_track)
     if _source_track is None:
         _source_track = LoopbackAudioTrack()
     return _relay.subscribe(_source_track)
@@ -398,9 +442,10 @@ def get_capture_status() -> dict:
 
 
 def shutdown_audio() -> None:
-    global _source_track
+    global _source_track, _silent_track
     if _source_track is not None:
         _source_track.stop()
         _source_track = None
+    _silent_track = None
     LoopbackAudioTrack.capture_state = "stopped"
     LoopbackAudioTrack.capture_error = None
